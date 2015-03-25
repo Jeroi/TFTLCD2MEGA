@@ -918,7 +918,6 @@ inline void TFTLCD::write8(uint8_t d) {
 			break;
 	}
 #endif
-
 #else
   #error "No pins defined!"
 #endif 
