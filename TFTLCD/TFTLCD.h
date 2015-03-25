@@ -128,7 +128,8 @@ class TFTLCD : public Print {
 
 
   void write8(uint8_t d);
-
+  void outputPort(char port);
+  
 // Added
   void calcGRAMPosition(uint16_t *posx, uint16_t *posy);
   void getViewport(uint16_t *bx, uint16_t *by, uint16_t *ex, uint16_t *ey);
@@ -154,4 +155,5 @@ class TFTLCD : public Print {
   uint16_t cursor_x, cursor_y;
   uint16_t textcolor;
   uint8_t rotation;
+  char outPort;
 };

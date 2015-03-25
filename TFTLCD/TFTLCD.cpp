@@ -1,5 +1,23 @@
 #include "TFTLCD.h"
 
+/*	Jeremi Roivas:
+
+	Added this define, because Mike's addded write/read delays (5) were not
+	sufficient enough. My rev3 MEGA board needed 6 microsecond delays to work.
+	This define adds delay to all read and write operations for MEGA boards and 
+	by default they are now 6, tested by me to work. 
+	
+	If you have white blacklight problem:
+	
+	PLEASE EDIT THIS HIGHER IF YOUR SCREEN IS BLACKLIGHT WHITE ONLY.
+***************************************************************************************************************************/
+#if defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
+	#define SPEED_DELAY 6
+#else
+	#define SPEED_DELAY 0
+#endif
+
+
 
 #ifdef USE_ADAFRUIT_SHIELD_PINOUT
 // special defines for the dataport
@@ -49,23 +67,6 @@
 //#define INVERT_X
 // If your LCD display chip has inverted Y addresses define this:
 //#define INVERT_Y
-
-/*	Jeremi Roivas:
-
-	Added this define, because Mike's addded write/read delays (5) were not
-	sufficient enough. My rev3 MEGA board needed 6 microsecond delays to work.
-	This define adds delay to all read and write operations for MEGA boards and 
-	by default they are now 6, tested by me to work. 
-	
-	If you have white blacklight problem:
-	
-	PLEASE EDIT THIS HIGHER IF YOUR SCREEN IS BLACKLIGHT WHITE ONLY.
-***************************************************************************************************************************/
-#if defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
-	#define SPEED_DELAY 6
-#else
-	#define SPEED_DELAY 0
-#endif
 
 #ifdef INVERT_X
 #define X(x) (TFTWIDTH - x - 1)
@@ -712,10 +713,22 @@ TFTLCD::TFTLCD(uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t reset) {
 
 /********************************** low level pin interface */
 
+/* 
+	Lett users define output port name for 8bit registers 
+	Supported registers: A,B,C,E,F,H,J,K,L
+	Not supported on UNO: D,E,F,H,J,K,LCD
+	Not supported on Mega: D, G
+	Not supported registers are those that may be found in other MCU's
+	This said, you can add your register code in Low level pin setting down on the bottom
+	*/
+void TFTLCD::outputPort(char port) {
+	outPort = port;		
+}
+
 void TFTLCD::reset(void) {
   if (_reset)
     digitalWrite(_reset, LOW);
-  delay(2); 
+  delay(2); 																					/////////////////Here is delay
   if (_reset)
     digitalWrite(_reset, HIGH);
 
@@ -727,145 +740,257 @@ void TFTLCD::reset(void) {
 }
 
 inline void TFTLCD::setWriteDir(void) {
-#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
-  DATADDR2 |= DATA2_MASK;
-  DATADDR1 |= DATA1_MASK;
-#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
+	switch (outPort) {
+		case 'A':
+			DDRA |= 0xFF;
+			break;
+		case 'B':
+			DDRB |= 0xFF;
+			break;
+		case 'C':
+			DDRC |= 0xFF;
+			break;
+		case 'E':
+			DDRE |= 0xFF;
+			break;
+		case 'F':
+			DDRF |= 0xFF;
+			break;
+		case 'H':
+			DDRH |= 0xFF;
+			break;
+		case 'K':
+			DDRK |= 0xFF;
+			break;	
+		case 'L' 
+			DDRL |= 0xFF;
+			break;
+		case 'K':
+			DDRK |= 0xFF;
+			break;
+		default:
+			#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
+				DATADDR2 |= DATA2_MASK;
+				DATADDR1 |= DATA1_MASK;
+			#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
 
-  #ifdef USE_ADAFRUIT_SHIELD_PINOUT
-  DDRH |= 0x78;
-  DDRB |= 0xB0;
-  DDRG |= _BV(5);
-  #else
-  
-  DDRH |= 0x78;
-  DDRE |= 0x38;
-  DDRG |= 0x20;
+				#ifdef USE_ADAFRUIT_SHIELD_PINOUT
+					DDRH |= 0x78;
+					DDRB |= 0xB0;
+					DDRG |= _BV(5);
+				#else
+					
+					DDRH |= 0x78;
+					DDRE |= 0x38;
+					DDRG |= 0x20;
+ 
+				#endif
+			#else
+				#error "No pins defined!"
+			#endif		
+	}
 
-  //MEGA_DATADDR = 0xFF;
-  
-  #endif
-#else
-  #error "No pins defined!"
-#endif
 }
 
 inline void TFTLCD::setReadDir(void) {
-#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
-  DATADDR2 &= ~DATA2_MASK;
-  DATADDR1 &= ~DATA1_MASK;
-#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
+	switch (outPort) {
+		// D and G ports are not suuported for limitles pin count for 8 bit
+		// Operation
+		case 'A':
+			DDRA &= 0x00;
+			break;
+		case 'B':
+			DDRB &= 0x00;
+			break;
+		case 'C':
+			DDRC &= 0x00;
+			break;
+		case 'E':
+			DDRE &= 0x00;
+			break;
+		case 'F':
+			DDRF &= 0x00;
+			break;
+		case 'H':
+			DDRH &= 0x00;
+			break;
+		case 'K':
+			DDRK &= 0x00;
+			break;	
+		case 'L' 
+			DDRL &= 0x00;
+			break;
+		case 'K':
+			DDRK &= 0x00;
+			break;
+		default:
+			#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
+				DATADDR2 &= ~DATA2_MASK;
+				DATADDR1 &= ~DATA1_MASK;
+			#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
 
-  #ifdef USE_ADAFRUIT_SHIELD_PINOUT
-  DDRH &= ~0x78;
-  DDRB &= ~0xB0;
-  DDRG &= ~_BV(5);
-  #else
-  
-  DDRH &= ~0x78;
-  DDRE &= ~0x38;
-  DDRG &= ~(0x20);
-  
-  //MEGA_DATADDR = 0;
-  #endif
-#else
-  #error "No pins defined!"
-#endif
+				#ifdef USE_ADAFRUIT_SHIELD_PINOUT
+					DDRH &= ~0x78;
+					DDRB &= ~0xB0;
+					DDRG &= ~_BV(5);
+				#else
+					DDRH &= ~0x78;
+					DDRE &= ~0x38;
+					DDRG &= ~(0x20);
+				#endif
+			#else
+				#error "No pins defined!"
+			#endif 
+	}
 }
 
 inline void TFTLCD::write8(uint8_t d) {
-#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
+	switch (outPort) {
+		// D and G ports are not suuported for limitles pin count for 8 bit
+		// Operation
+		case 'A':
+			PORTA = d;
+			break;
+		case 'B':
+			PORTB = d;
+			break;
+		case 'C':
+			PORTC = d;
+			break;
+		case 'E':
+			PORTE = d;
+			break;
+		case 'F':
+			PORTF = d;
+			break;
+		case 'H':
+			PORTH = d;
+			break;
+		case 'K':
+			PORTK = d;
+			break;	
+		case 'L' 
+			PORTL = d;
+			break;
+		case 'K':
+			PORTL = d;
+			break;
+		default:
+			#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
 
-  DATAPORT2 = (DATAPORT2 & DATA1_MASK) | 
-    (d & DATA2_MASK);
-  DATAPORT1 = (DATAPORT1 & DATA2_MASK) | 
-    (d & DATA1_MASK); // top 6 bits
+			DATAPORT2 = (DATAPORT2 & DATA1_MASK) | (d & DATA2_MASK);
+			DATAPORT1 = (DATAPORT1 & DATA2_MASK) | (d & DATA1_MASK); // top 6 bits
   
-#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
+			#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
 
 
-#ifdef USE_ADAFRUIT_SHIELD_PINOUT
+				#ifdef USE_ADAFRUIT_SHIELD_PINOUT
 
-  // bit 6/7 (PH3 & 4)
-  // first two bits 0 & 1 (PH5 & 6)
-  PORTH &= ~(0x78);
-  PORTH |= ((d&0xC0) >> 3) | ((d&0x3) << 5);
+					// bit 6/7 (PH3 & 4)
+					// first two bits 0 & 1 (PH5 & 6)
+					PORTH &= ~(0x78);
+					PORTH |= ((d&0xC0) >> 3) | ((d&0x3) << 5);
 
-  // bits 2 & 3 (PB4 & PB5)
-  // bit 5 (PB7)
-  PORTB &= ~(0xB0); 
-  PORTB |= ((d & 0x2C) << 2);
+					// bits 2 & 3 (PB4 & PB5)
+					// bit 5 (PB7)
+					PORTB &= ~(0xB0); 
+					PORTB |= ((d & 0x2C) << 2);
 
-  // bit 4  (PG5)
-  if (d & _BV(4))
-    PORTG |= _BV(5);
-  else
-    PORTG &= ~_BV(5);
+					// bit 4  (PG5)
+					if (d & _BV(4)) PORTG |= _BV(5);
+					else PORTG &= ~_BV(5);
 
-  #else
-  
-  // bit 6/7 (PH3 & 4)
-  // first two bits 0 & 1 (PH5 & 6)
-  	PORTH &= ~(0x78);
-  	PORTH |= ((d&0xC0) >> 3) | ((d&0x3) << 5);
+				#else
+				
+					// bit 6/7 (PH3 & 4)
+					// first two bits 0 & 1 (PH5 & 6)
+					PORTH &= ~(0x78);
+					PORTH |= ((d&0xC0) >> 3) | ((d&0x3) << 5);
   	
-  	// bits 2 & 3 (PE4 & 5)
-  	// bit 5 (PE3)
-  	PORTE &= ~(0x38);
-  	PORTE |= ((d & 0xC) << 2) | ((d & 0x20) >> 2);
+					// bits 2 & 3 (PE4 & 5)
+					// bit 5 (PE3)
+					PORTE &= ~(0x38);
+					PORTE |= ((d & 0xC) << 2) | ((d & 0x20) >> 2);
   	
-  	// bit 4
-  	PORTG &= ~(0x20);
-  	PORTG |= (d & 0x10) << 1;  	
-
-     //MEGA_DATAPORT = d;  
-  #endif
+					// bit 4
+					PORTG &= ~(0x20);
+					PORTG |= (d & 0x10) << 1;
+			break;
+	}
+#endif
 
 #else
   #error "No pins defined!"
-#endif
+#endif 
 }
 
 inline uint8_t TFTLCD::read8(void) {
- uint8_t d;
-#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
+	uint8_t d;
+	switch (outPort) {
+		// D and G ports are not suuported for limitles pin count for 8 bit
+		// Operation
+		case 'A':
+			d = PINA;
+			break;
+		case 'B':
+			d = PINB;
+			break;
+		case 'C':
+			d = PINC;
+			break;
+		case 'E':
+			d = PINE;
+			break;
+		case 'F':
+			d = PINF;
+			break;
+		case 'H':
+			d = PINH;
+			break;
+		case 'J':
+			d = PINJ;
+			break;	
+		case 'L' 
+			d = PINL;
+			break;
+		case 'K':
+			d = PINK;
+			break;
+		default:
+			#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
 
- d = DATAPIN1 & DATA1_MASK; 
- d |= DATAPIN2 & DATA2_MASK; 
+				d = DATAPIN1 & DATA1_MASK; 
+				d |= DATAPIN2 & DATA2_MASK; 
 
-#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__)  || defined(__AVR_ATmega1280__) 
+			#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__)  || defined(__AVR_ATmega1280__) 
 
-#ifdef USE_ADAFRUIT_SHIELD_PINOUT
+				#ifdef USE_ADAFRUIT_SHIELD_PINOUT
 
-  // bit 6/7 (PH3 & 4)
-  // first two bits 0 & 1 (PH5 & 6)
- d = (PINH & 0x60) >> 5;
- d |= (PINH & 0x18) << 3;
+					// bit 6/7 (PH3 & 4)
+					// first two bits 0 & 1 (PH5 & 6)
+					d = (PINH & 0x60) >> 5;
+					d |= (PINH & 0x18) << 3;
 
-  // bits 2 & 3 & 5 (PB4 & PB5, PB7)
- d |= (PINB & 0xB0) >> 2;
+					// bits 2 & 3 & 5 (PB4 & PB5, PB7)
+					d |= (PINB & 0xB0) >> 2;
 
-  // bit 4  (PG5)
-  if (PING & _BV(5))
-    d |= _BV(4);
+					// bit 4  (PG5)
+					if (PING & _BV(5))
+					d |= _BV(4);
 
-#else
- //d = MEGA_DATAPIN;  
+				#else	
+					d = (PINH & 0x60) >> 5;
+					d |= (PINH & 0x18) << 3;
+					d |= (PINE & 0x8) << 2;
+					d |= (PINE & 0x30) >> 2;
+					d |= (PING & 0x20) >> 1;	
+				#endif
+#			else
+				#error "No pins defined!"
 
-	d = (PINH & 0x60) >> 5;
-	d |= (PINH & 0x18) << 3;
-	d |= (PINE & 0x8) << 2;
-	d |= (PINE & 0x30) >> 2;
-	d |= (PING & 0x20) >> 1;
-
-#endif
-
-#else
-
-  #error "No pins defined!"
-
-#endif
-
+			#endif
+			break;
+	}
  return d;
 }
 
@@ -885,13 +1010,13 @@ void TFTLCD::writeData(uint16_t data) {
   	
   	write8(data >> 8);
   	digitalWrite(_wr, LOW);
-  	delayMicroseconds(SPEED_DELAY);
+  	delayMicroseconds(SPEED_DELAY);			//Original 5
   	digitalWrite(_wr, HIGH);
 
   	write8(data);
   	
   	digitalWrite(_wr, LOW);
-  	delayMicroseconds(SPEED_DELAY);
+  	delayMicroseconds(SPEED_DELAY);			//Original 5
   	digitalWrite(_wr, HIGH);
 
   	digitalWrite(_cs, HIGH);
@@ -905,13 +1030,13 @@ inline void TFTLCD::writeData_unsafe(uint16_t data) {
   write8(data >> 8);
 
   digitalWrite(_wr, LOW);
-  delayMicroseconds(SPEED_DELAY);
+  delayMicroseconds(SPEED_DELAY);			//Original 5
   digitalWrite(_wr, HIGH);
 
   write8(data);
 
   digitalWrite(_wr, LOW);
-  delayMicroseconds(SPEED_DELAY);
+  delayMicroseconds(SPEED_DELAY);			//Original 5
   digitalWrite(_wr, HIGH);
 }
 
@@ -929,13 +1054,13 @@ void TFTLCD::writeCommand(uint16_t cmd) {
   write8(cmd >> 8);
 
   digitalWrite(_wr, LOW); 
-  delayMicroseconds(SPEED_DELAY);
+  delayMicroseconds(SPEED_DELAY);    	//original 10
   digitalWrite(_wr, HIGH);
 
   write8(cmd);
 
   digitalWrite(_wr, LOW); 
-  delayMicroseconds(SPEED_DELAY);
+  delayMicroseconds(SPEED_DELAY);		//original 10
   digitalWrite(_wr, HIGH);
   digitalWrite(_cs, HIGH);
   
@@ -953,14 +1078,14 @@ uint16_t TFTLCD::readData() {
   digitalWrite(_wr, HIGH);
   
   digitalWrite(_rd, LOW);
-  delayMicroseconds(SPEED_DELAY);
+  delayMicroseconds(10);			//original 10
   d = read8();
   digitalWrite(_rd, HIGH);
   
   d <<= 8;
   
   digitalWrite(_rd, LOW);
-  delayMicroseconds(SPEED_DELAY);
+  delayMicroseconds(10);			//original 10
   d |= read8();
   digitalWrite(_rd, HIGH);
   
