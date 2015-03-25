@@ -5,5 +5,5 @@ I added #define SPEED_DELAY 6 to the TFTLCD.cpp that adds READ/WRITE operation d
 
 LIbrary confirmed to work with 2.4" LCD display with SD card shield:
 
-<img src="https://dl-web.dropbox.com/get/arduino-mega.png?_subject_uid=144804207&w=AADaEzj09TqeiFvG1VibIAC5BZ3unFjSiHgCT18SD8Vs9A">
+https://dl-web.dropbox.com/get/arduino-mega.png?_subject_uid=144804207&w=AADaEzj09TqeiFvG1VibIAC5BZ3unFjSiHgCT18SD8Vs9A">
 
