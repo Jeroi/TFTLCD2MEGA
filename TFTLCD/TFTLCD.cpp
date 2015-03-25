@@ -759,8 +759,8 @@ inline void TFTLCD::setWriteDir(void) {
 		case 'H':
 			DDRH |= 0xFF;
 			break;
-		case 'K':
-			DDRK |= 0xFF;
+		case 'J':
+			DDRJ |= 0xFF;
 			break;	
 		case 'L' 
 			DDRL |= 0xFF;
@@ -814,8 +814,8 @@ inline void TFTLCD::setReadDir(void) {
 		case 'H':
 			DDRH &= 0x00;
 			break;
-		case 'K':
-			DDRK &= 0x00;
+		case 'J':
+			DDRJ &= 0x00;
 			break;	
 		case 'L' 
 			DDRL &= 0x00;
@@ -866,8 +866,8 @@ inline void TFTLCD::write8(uint8_t d) {
 		case 'H':
 			PORTH = d;
 			break;
-		case 'K':
-			PORTK = d;
+		case 'J':
+			PORTJ = d;
 			break;	
 		case 'L' 
 			PORTL = d;
