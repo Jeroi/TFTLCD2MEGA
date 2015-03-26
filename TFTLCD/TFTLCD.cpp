@@ -1,5 +1,6 @@
 #include "TFTLCD.h"
 
+
 /*	Jeremi Roivas:
 
 	Added this define, because Mike's addded write/read delays (5) were not
@@ -11,7 +12,7 @@
 	
 	PLEASE EDIT THIS HIGHER IF YOUR SCREEN IS BLACKLIGHT WHITE ONLY.
 ***************************************************************************************************************************/
-#if defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
+#if defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560) || defined(__AVR_ATmega1280__) 
 	#define SPEED_DELAY 6
 #else
 	#define SPEED_DELAY 0
@@ -457,17 +458,24 @@ void TFTLCD::drawFastLine(uint16_t x, uint16_t y, uint16_t length,
   writeCommand(TFTLCD_RW_GRAM);  // Write Data to GRAM (R22h)
 
   setWriteDir();
-  digitalWrite(_cs, LOW);
-  digitalWrite(_cd, HIGH);
-  digitalWrite(_rd, HIGH);
-  digitalWrite(_wr, HIGH);
+  
+  //Speed up commands with port manipulation
+  *portOutputRegister(csport) &= ~csmask;
+  *portOutputRegister(cdport) |= cdmask;
+  *portOutputRegister(rdport) |= rdmask;
+  *portOutputRegister(wrport) |= wrmask;
+  //digitalWrite(_cs, LOW);
+  //digitalWrite(_cd, HIGH);
+  //digitalWrite(_rd, HIGH);
+  //digitalWrite(_wr, HIGH);
 
   while (length--) {
     writeData_unsafe(color); 
   }
 
   // set back to default
-  digitalWrite(_cs, HIGH);
+  *portOutputRegister(csport) |= csmask;
+  //digitalWrite(_cs, HIGH);
   
   writeRegister(TFTLCD_ENTRY_MOD, prevEntryMod); // JW ADD
 }
@@ -525,15 +533,22 @@ void TFTLCD::fillScreen(uint16_t color) {
   i = 320;
   i *= 240;
   
-  digitalWrite(_cs, LOW);
-  digitalWrite(_cd, HIGH);
-  digitalWrite(_rd, HIGH);
-  digitalWrite(_wr, HIGH);
+  //Speed up commands with port manipulation
+  *portOutputRegister(csport) &= ~csmask;
+  *portOutputRegister(cdport) |= cdmask;
+  *portOutputRegister(rdport) |= rdmask;
+  *portOutputRegister(wrport) |= wrmask;
+  //digitalWrite(_cs, LOW);
+  //digitalWrite(_cd, HIGH);
+  //digitalWrite(_rd, HIGH);
+  //digitalWrite(_wr, HIGH);
 
   setWriteDir();
   while (i--) {
     writeData_unsafe(color); 
   }
+  
+  //*portOutputRegister(csport) |= csmask;
   digitalWrite(_cs, HIGH);
 }
 
@@ -668,6 +683,65 @@ uint8_t TFTLCD::getRotation(void) {
 
 /********************************* low level pin initialization */
 
+#if defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560) || defined(__AVR_ATmega1280__)
+//Include output port selection to initializer if MEGA boards are used
+TFTLCD::TFTLCD(uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t reset, char outport) {
+	_cs = cs;
+  _cd = cd;
+  _wr = wr;
+  _rd = rd;
+  _reset = reset;
+  
+  
+  rotation = 0;
+  _width = TFTWIDTH;
+  _height = TFTHEIGHT;
+  
+  //Store pointer to PORT of pins 
+  csport = digitalPinToPort(_cs);
+  cdport = digitalPinToPort(_cd);
+  wrport = digitalPinToPort(_wr);
+  rdport = digitalPinToPort(_rd);
+  resetport = digitalPinToPort(_reset);
+  
+  //Fetch bitmask for invidual pin
+  csmask = digitalPinToBitMask(_cs);
+  cdmask = digitalPinToBitMask(_cd);
+  wrmask = digitalPinToBitMask(_wr);
+  rdmask = digitalPinToBitMask(_rd);
+  resetmask = digitalPinToPort(_reset);
+  
+  // disable the LCD
+  *portOutputRegister(csport) &= ~csmask;
+  //digitalWrite(_cs, HIGH);
+  pinMode(_cs, OUTPUT);
+  
+  *portOutputRegister(cdport) |= cdmask;
+  //digitalWrite(_cd, HIGH);
+  pinMode(_cd, OUTPUT);  
+  
+  *portOutputRegister(wrport) |= wrmask;
+  //digitalWrite(_wr, HIGH);
+  pinMode(_wr, OUTPUT);  
+  
+  *portOutputRegister(rdport) |= rdmask;
+  //digitalWrite(_rd, HIGH);
+  pinMode(_rd, OUTPUT);  
+  
+  *portOutputRegister(resetport) |= resetmask;
+  //digitalWrite(_reset, HIGH); 
+  pinMode(_reset, OUTPUT); 
+	
+  //Setup output option
+  outputPort(outport);	
+	
+  cursor_y = cursor_x = 0;
+  textsize = 1;
+  textcolor = 0xFFFF;
+}
+#endif
+
+/*Exclude output initializer and use default SHIELD settings */
 TFTLCD::TFTLCD(uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t reset) {
   _cs = cs;
   _cd = cd;
@@ -678,58 +752,133 @@ TFTLCD::TFTLCD(uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t reset) {
   rotation = 0;
   _width = TFTWIDTH;
   _height = TFTHEIGHT;
-
-  // disable the LCD
-  digitalWrite(_cs, HIGH);
-  pinMode(_cs, OUTPUT);  
   
-  digitalWrite(_cd, HIGH);
-  pinMode(_cd, OUTPUT);  
   
-  digitalWrite(_wr, HIGH);
-  pinMode(_wr, OUTPUT);  
-  
-  digitalWrite(_rd, HIGH);
-  pinMode(_rd, OUTPUT);  
-
-  digitalWrite(_reset, HIGH); 
-  pinMode(_reset, OUTPUT); 
-
+  //Store address to PORT of pins 
   csport = digitalPinToPort(_cs);
   cdport = digitalPinToPort(_cd);
   wrport = digitalPinToPort(_wr);
   rdport = digitalPinToPort(_rd);
-
-  cspin = digitalPinToBitMask(_cs);
-  cdpin = digitalPinToBitMask(_cd);
-  wrpin = digitalPinToBitMask(_wr);
-  rdpin = digitalPinToBitMask(_rd);
-
+  resetport = digitalPinToPort(_reset);
+  
+  //Fetch bitmask for invidual pin
+  csmask = digitalPinToBitMask(_cs);
+  cdmask = digitalPinToBitMask(_cd);
+  wrmask = digitalPinToBitMask(_wr);
+  rdmask = digitalPinToBitMask(_rd);
+  resetmask = digitalPinToBitMask(_reset);
+  
+  // disable the LCD
+  *portOutputRegister(csport) |= csmask;
+  //digitalWrite(_cs, HIGH);
+  pinMode(_cs, OUTPUT);
+  
+  *portOutputRegister(cdport) |= cdmask;
+  //digitalWrite(_cd, HIGH);
+  pinMode(_cd, OUTPUT);  
+  
+  *portOutputRegister(wrport) |= wrmask;
+  //digitalWrite(_wr, HIGH);
+  pinMode(_wr, OUTPUT);  
+  
+  *portOutputRegister(rdport) |= rdmask;
+  //digitalWrite(_rd, HIGH);
+  pinMode(_rd, OUTPUT);  
+  
+  *portOutputRegister(resetport) |= resetmask;
+  //digitalWrite(_reset, HIGH); 
+  pinMode(_reset, OUTPUT); 
+  
+  
+  
+  //Define output to single port as default false;
+  outPort = false;
+  
   cursor_y = cursor_x = 0;
   textsize = 1;
   textcolor = 0xFFFF;
+  
 }
 
 
 /********************************** low level pin interface */
 
 /* 
-	Lett users define output port name for 8bit registers 
+	Let users define output port name for 8bit registers when using MEGA boards
 	Supported registers: A,B,C,E,F,H,J,K,L
 	Not supported on UNO: D,E,F,H,J,K,LCD
 	Not supported on Mega: D, G
 	Not supported registers are those that may be found in other MCU's
 	This said, you can add your register code in Low level pin setting down on the bottom
 	*/
+#if defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560) || defined(__AVR_ATmega1280__) 	
 void TFTLCD::outputPort(char port) {
-	outPort = port;		
+	switch (port) {
+		// D and G ports are not suuported for limitles pin count for 8 bit
+		// Operation
+		// TODO: DUE port defines A, B & C
+		outPort = true;
+		case 'A':
+			//Store pointer to PORTS
+			p = &PORTA;
+			d = &DDRA;
+			r = &PINA;
+			break;
+		case 'B':
+			p = &PORTB;
+			d = &DDRB;
+			r = &PINB;
+			break;
+		case 'C':
+			p = &PORTC;
+			d = &DDRC;
+			r = &PINC;
+			break;
+		case 'E':
+			p = &PORTE;
+			d = &DDRE;
+			r = &PINE;
+			break;
+		case 'F':
+			p = &PORTF;
+			d = &DDRF;
+			r = &PINF;
+			break;
+		case 'H':
+			p = &PORTH;
+			d = &DDRH;
+			r = &PINH;
+			break;
+		case 'J':
+			p = &PORTJ;
+			d = &DDRJ;
+			r = &PINJ;
+			break;	
+		case 'L': 
+			p = &PORTL;
+			d = &DDRL;
+			r = &PINL;
+			break;
+		case 'K':
+			p = &PORTK;
+			d = &DDRK;
+			r = &PINK;
+			break;
+		default:
+			//In case of not supported letter make outport false to use SHIELD output
+			outPort = false;
+			break;
+	}
 }
+#endif
 
 void TFTLCD::reset(void) {
   if (_reset)
+	//*portOutputRegister(resetport) &= ~resetmask;  
     digitalWrite(_reset, LOW);
   delay(2); 																					/////////////////Here is delay
   if (_reset)
+	//*portOutputRegister(resetport)|= resetmask;  
     digitalWrite(_reset, HIGH);
 
   // resync
@@ -740,257 +889,164 @@ void TFTLCD::reset(void) {
 }
 
 inline void TFTLCD::setWriteDir(void) {
-	switch (outPort) {
-		case 'A':
-			DDRA |= 0xFF;
-			break;
-		case 'B':
-			DDRB |= 0xFF;
-			break;
-		case 'C':
-			DDRC |= 0xFF;
-			break;
-		case 'E':
-			DDRE |= 0xFF;
-			break;
-		case 'F':
-			DDRF |= 0xFF;
-			break;
-		case 'H':
-			DDRH |= 0xFF;
-			break;
-		case 'J':
-			DDRJ |= 0xFF;
-			break;	
-		case 'L' 
-			DDRL |= 0xFF;
-			break;
-		case 'K':
-			DDRK |= 0xFF;
-			break;
-		default:
-			#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
-				DATADDR2 |= DATA2_MASK;
-				DATADDR1 |= DATA1_MASK;
-			#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
-
-				#ifdef USE_ADAFRUIT_SHIELD_PINOUT
-					DDRH |= 0x78;
-					DDRB |= 0xB0;
-					DDRG |= _BV(5);
-				#else
-					
-					DDRH |= 0x78;
-					DDRE |= 0x38;
-					DDRG |= 0x20;
- 
-				#endif
-			#else
-				#error "No pins defined!"
-			#endif		
+	
+	if (outPort == true) {
+		//Put output state DDR register
+		*d |= 0xFF;
 	}
+	else {
+		#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
+			DATADDR2 |= DATA2_MASK;
+			DATADDR1 |= DATA1_MASK;
+		#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
 
+			#ifdef USE_ADAFRUIT_SHIELD_PINOUT
+				DDRH |= 0x78;
+				DDRB |= 0xB0;
+				DDRG |= _BV(5);
+			#else
+					
+				DDRH |= 0x78;
+				DDRE |= 0x38;
+				DDRG |= 0x20;
+ 
+			#endif
+		#else
+			#error "No pins defined!"
+		#endif
+	}
 }
 
 inline void TFTLCD::setReadDir(void) {
-	switch (outPort) {
-		// D and G ports are not suuported for limitles pin count for 8 bit
-		// Operation
-		case 'A':
-			DDRA &= 0x00;
-			break;
-		case 'B':
-			DDRB &= 0x00;
-			break;
-		case 'C':
-			DDRC &= 0x00;
-			break;
-		case 'E':
-			DDRE &= 0x00;
-			break;
-		case 'F':
-			DDRF &= 0x00;
-			break;
-		case 'H':
-			DDRH &= 0x00;
-			break;
-		case 'J':
-			DDRJ &= 0x00;
-			break;	
-		case 'L' 
-			DDRL &= 0x00;
-			break;
-		case 'K':
-			DDRK &= 0x00;
-			break;
-		default:
-			#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
-				DATADDR2 &= ~DATA2_MASK;
-				DATADDR1 &= ~DATA1_MASK;
-			#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
-
-				#ifdef USE_ADAFRUIT_SHIELD_PINOUT
-					DDRH &= ~0x78;
-					DDRB &= ~0xB0;
-					DDRG &= ~_BV(5);
-				#else
-					DDRH &= ~0x78;
-					DDRE &= ~0x38;
-					DDRG &= ~(0x20);
-				#endif
+	if (outPort == true) {
+		//Put output port to register read state
+		*d &= 0x00;
+	}
+	else {
+			/* Implement here platform spesific shield settings */
+		
+		#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
+			DATADDR2 &= ~DATA2_MASK;
+			DATADDR1 &= ~DATA1_MASK;
+		#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
+			
+			#ifdef USE_ADAFRUIT_SHIELD_PINOUT
+				DDRH &= ~0x78;
+				DDRB &= ~0xB0;
+				DDRG &= ~_BV(5);
 			#else
-				#error "No pins defined!"
-			#endif 
+				DDRH &= ~0x78;
+				DDRE &= ~0x38;
+				DDRG &= ~(0x20);
+			#endif
+		#else
+			#error "No pins defined!"
+		#endif 
+	
 	}
 }
 
 inline void TFTLCD::write8(uint8_t d) {
-	switch (outPort) {
-		// D and G ports are not suuported for limitles pin count for 8 bit
-		// Operation
-		case 'A':
-			PORTA = d;
-			break;
-		case 'B':
-			PORTB = d;
-			break;
-		case 'C':
-			PORTC = d;
-			break;
-		case 'E':
-			PORTE = d;
-			break;
-		case 'F':
-			PORTF = d;
-			break;
-		case 'H':
-			PORTH = d;
-			break;
-		case 'J':
-			PORTJ = d;
-			break;	
-		case 'L' 
-			PORTL = d;
-			break;
-		case 'K':
-			PORTL = d;
-			break;
-		default:
-			#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
-
-			DATAPORT2 = (DATAPORT2 & DATA1_MASK) | (d & DATA2_MASK);
-			DATAPORT1 = (DATAPORT1 & DATA2_MASK) | (d & DATA1_MASK); // top 6 bits
-  
-			#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
-
-
-				#ifdef USE_ADAFRUIT_SHIELD_PINOUT
-
-					// bit 6/7 (PH3 & 4)
-					// first two bits 0 & 1 (PH5 & 6)
-					PORTH &= ~(0x78);
-					PORTH |= ((d&0xC0) >> 3) | ((d&0x3) << 5);
-
-					// bits 2 & 3 (PB4 & PB5)
-					// bit 5 (PB7)
-					PORTB &= ~(0xB0); 
-					PORTB |= ((d & 0x2C) << 2);
-
-					// bit 4  (PG5)
-					if (d & _BV(4)) PORTG |= _BV(5);
-					else PORTG &= ~_BV(5);
-
-				#else
-				
-					// bit 6/7 (PH3 & 4)
-					// first two bits 0 & 1 (PH5 & 6)
-					PORTH &= ~(0x78);
-					PORTH |= ((d&0xC0) >> 3) | ((d&0x3) << 5);
-  	
-					// bits 2 & 3 (PE4 & 5)
-					// bit 5 (PE3)
-					PORTE &= ~(0x38);
-					PORTE |= ((d & 0xC) << 2) | ((d & 0x20) >> 2);
-  	
-					// bit 4
-					PORTG &= ~(0x20);
-					PORTG |= (d & 0x10) << 1;
-			break;
+	
+	if (outPort == true) {
+		// Insert byte to PORT register
+		*p = d;
 	}
-#endif
-#else
-  #error "No pins defined!"
-#endif 
+	else {
+		
+	
+		#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
+		
+		DATAPORT2 = (DATAPORT2 & DATA1_MASK) | (d & DATA2_MASK);
+		DATAPORT1 = (DATAPORT1 & DATA2_MASK) | (d & DATA1_MASK); // top 6 bits
+  
+		#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__) || defined(__AVR_ATmega1280__) 
+		
+
+			#ifdef USE_ADAFRUIT_SHIELD_PINOUT
+			
+				// bit 6/7 (PH3 & 4)
+				// first two bits 0 & 1 (PH5 & 6)
+				PORTH &= ~(0x78);
+				PORTH |= ((d&0xC0) >> 3) | ((d&0x3) << 5);
+
+				// bits 2 & 3 (PB4 & PB5)
+				// bit 5 (PB7)
+				PORTB &= ~(0xB0); 
+				PORTB |= ((d & 0x2C) << 2);
+
+				// bit 4  (PG5)
+				if (d & _BV(4)) PORTG |= _BV(5);
+				else PORTG &= ~_BV(5);
+
+			#else
+				
+				// bit 6/7 (PH3 & 4)
+				// first two bits 0 & 1 (PH5 & 6)
+				PORTH &= ~(0x78);
+				PORTH |= ((d&0xC0) >> 3) | ((d&0x3) << 5);
+ 	
+				// bits 2 & 3 (PE4 & 5)
+				// bit 5 (PE3)
+				PORTE &= ~(0x38);
+				PORTE |= ((d & 0xC) << 2) | ((d & 0x20) >> 2);
+  	
+				// bit 4
+				PORTG &= ~(0x20);
+				PORTG |= (d & 0x10) << 1;
+			#endif
+
+		#else
+			#error "No pins defined!"
+		#endif
+	}
 }
 
 inline uint8_t TFTLCD::read8(void) {
 	uint8_t d;
-	switch (outPort) {
-		// D and G ports are not suuported for limitles pin count for 8 bit
-		// Operation
-		case 'A':
-			d = PINA;
-			break;
-		case 'B':
-			d = PINB;
-			break;
-		case 'C':
-			d = PINC;
-			break;
-		case 'E':
-			d = PINE;
-			break;
-		case 'F':
-			d = PINF;
-			break;
-		case 'H':
-			d = PINH;
-			break;
-		case 'J':
-			d = PINJ;
-			break;	
-		case 'L' 
-			d = PINL;
-			break;
-		case 'K':
-			d = PINK;
-			break;
-		default:
-			#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328) || (__AVR_ATmega8__)
-
-				d = DATAPIN1 & DATA1_MASK; 
-				d |= DATAPIN2 & DATA2_MASK; 
-
-			#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__)  || defined(__AVR_ATmega1280__) 
-
-				#ifdef USE_ADAFRUIT_SHIELD_PINOUT
-
-					// bit 6/7 (PH3 & 4)
-					// first two bits 0 & 1 (PH5 & 6)
-					d = (PINH & 0x60) >> 5;
-					d |= (PINH & 0x18) << 3;
-
-					// bits 2 & 3 & 5 (PB4 & PB5, PB7)
-					d |= (PINB & 0xB0) >> 2;
-
-					// bit 4  (PG5)
-					if (PING & _BV(5))
-					d |= _BV(4);
-
-				#else	
-					d = (PINH & 0x60) >> 5;
-					d |= (PINH & 0x18) << 3;
-					d |= (PINE & 0x8) << 2;
-					d |= (PINE & 0x30) >> 2;
-					d |= (PING & 0x20) >> 1;	
-				#endif
-#			else
-				#error "No pins defined!"
-
-			#endif
-			break;
+	
+	if (outPort == true) {
+		// Read byte from port register 
+		d = *r;
 	}
- return d;
+	else {
+		
+		
+		#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__) || defined (__AVR_ATmega328__) || (__AVR_ATmega8__)
+
+			d = DATAPIN1 & DATA1_MASK; 
+			d |= DATAPIN2 & DATA2_MASK; 
+
+		#elif defined(__AVR_ATmega1281__) || defined(__AVR_ATmega2561__) || defined(__AVR_ATmega2560__)  || defined(__AVR_ATmega1280__) 
+
+			#ifdef USE_ADAFRUIT_SHIELD_PINOUT
+
+				// bit 6/7 (PH3 & 4)
+				// first two bits 0 & 1 (PH5 & 6)
+				d = (PINH & 0x60) >> 5;
+				d |= (PINH & 0x18) << 3;
+
+				// bits 2 & 3 & 5 (PB4 & PB5, PB7)
+				d |= (PINB & 0xB0) >> 2;
+
+				// bit 4  (PG5)
+				if (PING & _BV(5))
+				d |= _BV(4);
+
+			#else	
+				d = (PINH & 0x60) >> 5;
+				d |= (PINH & 0x18) << 3;
+				d |= (PINE & 0x8) << 2;
+				d |= (PINE & 0x30) >> 2;
+				d |= (PING & 0x20) >> 1;	
+			#endif
+		#else
+			#error "No pins defined!"
+
+		#endif
+		
+	}
+	return d;
 }
 
 /********************************** low level readwrite interface */
@@ -1001,24 +1057,33 @@ void TFTLCD::writeData(uint16_t data) {
 
 	setWriteDir();
 	
-  	digitalWrite(_cs, LOW);
-  	digitalWrite(_cd, HIGH);
-  	digitalWrite(_rd, HIGH);
-  
-  	digitalWrite(_wr, HIGH);  
-  	
+	//Speed up commands with port manipulation
+	*portOutputRegister(csport) &= ~csmask;
+	*portOutputRegister(cdport) |= cdmask;
+	*portOutputRegister(rdport) |= rdmask;
+	*portOutputRegister(wrport) |= wrmask;
+  	//digitalWrite(_cs, LOW);
+  	//digitalWrite(_cd, HIGH);
+  	//digitalWrite(_rd, HIGH);
+  	//digitalWrite(_wr, HIGH);  
+
   	write8(data >> 8);
-  	digitalWrite(_wr, LOW);
-  	delayMicroseconds(SPEED_DELAY);			//Original 5
-  	digitalWrite(_wr, HIGH);
+
+	*portOutputRegister(wrport) &= ~wrmask;
+  	//digitalWrite(_wr, LOW);
+  	//delayMicroseconds(SPEED_DELAY); //Original 5
+	*portOutputRegister(wrport) |= wrmask;
+	//digitalWrite(_wr, HIGH);
 
   	write8(data);
-  	
-  	digitalWrite(_wr, LOW);
-  	delayMicroseconds(SPEED_DELAY);			//Original 5
-  	digitalWrite(_wr, HIGH);
-
-  	digitalWrite(_cs, HIGH);
+  	//delayMicroseconds(4);
+	*portOutputRegister(wrport) &= ~wrmask;
+  	//digitalWrite(_wr, LOW);
+  	//delayMicroseconds(SPEED_DELAY); //Original 5
+	*portOutputRegister(wrport) |= wrmask;	
+  	//digitalWrite(_wr, HIGH);
+	*portOutputRegister(csport) |= csmask;
+  	//digitalWrite(_cs, HIGH);
 }
 
 // this is a 'sped up' version, with no direction setting, or pin initialization
@@ -1026,17 +1091,21 @@ void TFTLCD::writeData(uint16_t data) {
 inline void TFTLCD::writeData_unsafe(uint16_t data) {
   volatile uint8_t *wrportreg = portOutputRegister(wrport);
 
-  write8(data >> 8);
+	//Todo: look if this function works after port manipulation change
+	write8(data >> 8);
+	*portOutputRegister(wrport) &= ~wrmask;
+	//delayMicroseconds(4);
+	//digitalWrite(_wr, LOW);
+	*portOutputRegister(wrport) |= wrmask;	
+	//digitalWrite(_wr, HIGH);
 
-  digitalWrite(_wr, LOW);
-  delayMicroseconds(SPEED_DELAY);			//Original 5
-  digitalWrite(_wr, HIGH);
-
-  write8(data);
-
-  digitalWrite(_wr, LOW);
-  delayMicroseconds(SPEED_DELAY);			//Original 5
-  digitalWrite(_wr, HIGH);
+	write8(data);
+	
+	*portOutputRegister(wrport) &= ~wrmask;
+	//delayMicroseconds(4); //just to be sure it works after
+	*portOutputRegister(wrport) |= wrmask;	
+	//digitalWrite(_wr, LOW);
+	//digitalWrite(_wr, HIGH);
 }
 
 // the C/D pin is low during write
@@ -1044,24 +1113,34 @@ void TFTLCD::writeCommand(uint16_t cmd) {
   volatile uint8_t *wrportreg = portOutputRegister(wrport);
 
    setWriteDir();
-   
-  digitalWrite(_cs, LOW);
-  digitalWrite(_cd, LOW);
-  digitalWrite(_rd, HIGH);
-  digitalWrite(_wr, HIGH);
+   //Speed up writing with port manipulation
+	*portOutputRegister(csport) &= ~csmask;
+	*portOutputRegister(cdport) &= ~cdmask;
+	*portOutputRegister(rdport) |= rdmask;
+	*portOutputRegister(wrport) |= wrmask;
+  
+  //digitalWrite(_cs, LOW);
+  //digitalWrite(_cd, LOW);
+  //digitalWrite(_rd, HIGH);
+  //digitalWrite(_wr, HIGH);
   
   write8(cmd >> 8);
-
-  digitalWrite(_wr, LOW); 
-  delayMicroseconds(SPEED_DELAY);    	//original 10
-  digitalWrite(_wr, HIGH);
+  
+  *portOutputRegister(wrport) &= ~wrmask;
+  //digitalWrite(_wr, LOW); 
+  delayMicroseconds(10); //original 10
+  *portOutputRegister(wrport) |= wrmask;
+  //digitalWrite(_wr, HIGH);
 
   write8(cmd);
 
-  digitalWrite(_wr, LOW); 
-  delayMicroseconds(SPEED_DELAY);		//original 10
-  digitalWrite(_wr, HIGH);
-  digitalWrite(_cs, HIGH);
+  *portOutputRegister(wrport) &= ~wrmask;
+  //digitalWrite(_wr, LOW); 
+  delayMicroseconds(10);		//original 10
+  *portOutputRegister(wrport) |= wrmask;
+  //digitalWrite(_wr, HIGH);
+  *portOutputRegister(csport) |= csmask;
+  //digitalWrite(_cs, HIGH);
   
 }
 
@@ -1070,25 +1149,35 @@ uint16_t TFTLCD::readData() {
   uint16_t d = 0;
 
   setReadDir();
-   
-  digitalWrite(_cs, LOW);
-  digitalWrite(_cd, HIGH);
-  digitalWrite(_rd, HIGH);
-  digitalWrite(_wr, HIGH);
   
-  digitalWrite(_rd, LOW);
-  delayMicroseconds(10);			//original 10
+  *portOutputRegister(csport) &= ~csmask;
+  *portOutputRegister(cdport) |= cdmask;
+  *portOutputRegister(rdport) |= rdmask;
+  *portOutputRegister(wrport) |= wrmask;
+  
+  //digitalWrite(_cs, LOW);
+  //digitalWrite(_cd, HIGH);
+  //digitalWrite(_rd, HIGH);
+  //digitalWrite(_wr, HIGH);
+  
+  *portOutputRegister(rdport) &= ~rdmask;
+  //digitalWrite(_rd, LOW);
+  //delayMicroseconds(10);			//original 10
   d = read8();
-  digitalWrite(_rd, HIGH);
+  *portOutputRegister(rdport) |= rdmask;
+  //digitalWrite(_rd, HIGH);
   
   d <<= 8;
   
-  digitalWrite(_rd, LOW);
-  delayMicroseconds(10);			//original 10
+  *portOutputRegister(rdport) &= ~rdmask;
+  //digitalWrite(_rd, LOW);
+  //delayMicroseconds(10);			//original 10
   d |= read8();
-  digitalWrite(_rd, HIGH);
+  *portOutputRegister(rdport) |= rdmask;
+  //digitalWrite(_rd, HIGH);
   
-  digitalWrite(_cs, HIGH);
+  *portOutputRegister(csport) |= csmask;
+  //digitalWrite(_cs, HIGH);
 
   return d;
 }
@@ -1150,10 +1239,10 @@ void TFTLCD::setViewport(uint16_t bx, uint16_t by, uint16_t ex, uint16_t ey)
 // Writes 16-bit data in bulk, using callback to get more
 void TFTLCD::bulkWrite(uint16_t *data, uint16_t bufferSize, uint16_t (*getNextValues)(void *), void *userData)
 {
-	*portOutputRegister(csport) &= ~cspin;
-	*portOutputRegister(cdport) |= cdpin;
-	*portOutputRegister(rdport) |= rdpin;
-	*portOutputRegister(wrport) |= wrpin;
+	*portOutputRegister(csport) &= ~csmask;
+	*portOutputRegister(cdport) |= cdmask;
+	*portOutputRegister(rdport) |= rdmask;
+	*portOutputRegister(wrport) |= wrmask;
 
 	setWriteDir();
 	while( bufferSize )
@@ -1164,7 +1253,7 @@ void TFTLCD::bulkWrite(uint16_t *data, uint16_t bufferSize, uint16_t (*getNextVa
 		}
 		bufferSize = getNextValues(userData);
 	}
-	*portOutputRegister(csport) |= cspin;		
+	*portOutputRegister(csport) |= csmask;		
 }
 
  

@@ -1,6 +1,6 @@
 
 #include <Arduino.h>
-
+#include <avr/io.h>  
 // comment or uncomment the next line for special pinout!
 //#define USE_ADAFRUIT_SHIELD_PINOUT
 
@@ -65,7 +65,8 @@
 class TFTLCD : public Print {
  public:
   TFTLCD(uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t reset);
-
+  TFTLCD(uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t reset, char outport);
+  
   uint16_t Color565(uint8_t r, uint8_t g, uint8_t b);
 
   // drawing primitives!
@@ -107,7 +108,7 @@ class TFTLCD : public Print {
   uint8_t getRotation();
 
   /* low level */
-
+  
   void writeData(uint16_t d);
   void writeCommand(uint16_t c);
   uint16_t readData(void);
@@ -144,16 +145,32 @@ class TFTLCD : public Print {
 
 
   uint8_t read8(void);
-
-  uint8_t _cs, _cd, _reset, _wr, _rd;
-
-  uint8_t csport, cdport, wrport, rdport;
-  uint8_t cspin, cdpin, wrpin, rdpin;
-
+  
   uint16_t _width, _height;
   uint8_t textsize;
   uint16_t cursor_x, cursor_y;
   uint16_t textcolor;
   uint8_t rotation;
-  char outPort;
+  
+  /* LOW level */
+  
+ 
+  // Contorl bit pins
+  uint8_t _cs, _cd, _reset, _wr, _rd;
+  // Control bit registers
+  uint8_t csport, cdport, wrport, rdport , resetport;
+  // Control bit register masks
+  uint8_t csmask, cdmask, wrmask, rdmask, resetmask;
+  
+  //Output register definitions
+  bool outPort;
+  //Variable to store PORT "write"
+  volatile uint8_t * p;
+  //Variable to store DDR "MODE R/W"
+  volatile uint8_t * d;
+  //Variable to store PIN "read" register
+  volatile uint8_t * r;
+  
+ 
+  
 };
