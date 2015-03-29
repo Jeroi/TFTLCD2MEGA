@@ -1,3 +1,19 @@
+//Some defines to handle ports
+
+#ifndef __avr_defines_h_included__
+#define __avr_defines_h_included__
+
+#define JOIN2(x,y)   x ## y
+#define JOIN3(x,y,z) x ## y ## z
+
+#define DDRx(x)      JOIN2 (DDR, x)
+#define PORTx(x)     JOIN2 (PORT, x)
+#define PINx(x)      JOIN2 (PIN, x)
+#define INTx(x)      JOIN3 (INT, x, _vect)
+#define MASK(x)      (1 << x)
+
+#endif
+
 
 #include <Arduino.h>
 #include <avr/io.h>  
