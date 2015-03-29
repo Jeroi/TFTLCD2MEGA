@@ -7,5 +7,7 @@ Added outputPort(char portletter) function if using MEGA chips. There is many PO
 
 Library confirmed to work with 2.4" LCD display with SD card shield:
 
+![Drobox image](https://dl-web.dropbox.com/get/arduino-mega.png?_subject_uid=144804207&w=AADaEzj09TqeiFvG1VibIAC5BZ3unFjSiHgCT18SD8Vs9A)
+
 https://www.dropbox.com/s/p40ol6cvzoo3eiw/arduino-mega.png?dl=0
 
