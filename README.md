@@ -7,7 +7,11 @@ Added outputPort(char portletter) function if using MEGA chips. There is many PO
 
 Library confirmed to work with 2.4" LCD display with SD card shield:
 
-![Drobox image](https://dl-web.dropbox.com/get/arduino-mega.png?_subject_uid=144804207&w=AADaEzj09TqeiFvG1VibIAC5BZ3unFjSiHgCT18SD8Vs9A)
+![Library work in Mega](https://raw.githubusercontent.com/Jeroi/TFTLCD2MEGA/screenshot/arduino-mega.png)
 
-https://www.dropbox.com/s/p40ol6cvzoo3eiw/arduino-mega.png?dl=0
+Only way to print native letters provided by extended ascii glcdfont.c is to escape HEX letter values to your string:
+
+Finnish: "onko oikein tämä?" -> "onko oikein t\x84m\x84?"
+
+Take a look of your native letter value from glcdfont.c and convert it to HEX.
 
