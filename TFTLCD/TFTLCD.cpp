@@ -124,7 +124,7 @@ size_t TFTLCD::write(uint8_t c) {
   return 0;
 }
 
-void TFTLCD::drawString(uint16_t x, uint16_t y, char *c, 
+void TFTLCD::drawString(uint16_t x, uint16_t y, unsigned char *c, 
 			uint16_t color, uint8_t size) {
   while (c[0] != 0) {
     drawChar(x, y, c[0], color, size);
@@ -133,7 +133,7 @@ void TFTLCD::drawString(uint16_t x, uint16_t y, char *c,
   }
 }
 // draw a character
-void TFTLCD::drawChar(uint16_t x, uint16_t y, char c, 
+void TFTLCD::drawChar(uint16_t x, uint16_t y, unsigned char c, 
 		      uint16_t color, uint8_t size) {
   for (uint8_t i =0; i<5; i++ ) {
     uint8_t line = pgm_read_byte(font+(c*5)+i);

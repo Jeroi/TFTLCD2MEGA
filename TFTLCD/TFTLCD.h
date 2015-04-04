@@ -111,8 +111,8 @@ class TFTLCD : public Print {
   void setTextSize(uint8_t s);
   virtual size_t write(uint8_t);
 
-  void drawChar(uint16_t x, uint16_t y, char c, uint16_t color, uint8_t s = 1);
-  void drawString(uint16_t x, uint16_t y, char *c, uint16_t color, uint8_t s = 1);
+  void drawChar(uint16_t x, uint16_t y, unsigned char c, uint16_t color, uint8_t s = 1);
+  void drawString(uint16_t x, uint16_t y, unsigned char *c, uint16_t color, uint8_t s = 1);
 
   // commands
   void initDisplay(void);
