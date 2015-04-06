@@ -4,8 +4,11 @@ ARDUINO UNO TFTLCD library that supports also MEGA boards.
 This is an internationalised version of TFTLCD. This means no char string can be provided directly to drawString("string here") function. 
 One must use:
  - unsigned char localizedString[] = "My text displays extented ascii with escapes \x98\x89";
+
 Meaning:
+
  - "My text displays extented ascii with escapes öä"
+
 Extended letter values are in glcdfont.c and one must convert it to HEX to input escapes to the text string.
 
 Improvements to the TFTLCD lib:
